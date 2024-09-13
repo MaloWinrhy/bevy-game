@@ -10,7 +10,7 @@ struct Name(String);
 fn main() {
     App::new()
         .add_systems(Startup, add_people)
-        .add_systems(Update, (hello_world, (update_people, greet_people).chain()))
+        .add_systems(Update, (hello_world, greet_people))
         .run();
 }
 
