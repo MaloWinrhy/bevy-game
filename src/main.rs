@@ -1,70 +1,60 @@
+
 use bevy::prelude::*;
-use bevy_light_2d::prelude::*;
-
-// Composants
-#[derive(Component)]
-struct Person;
-
-#[derive(Component)]
-struct Name(String);
-
-// Plugin principal
-pub struct HelloPlugin;
-
-impl Plugin for HelloPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup); // Ajouter la configuration de la caméra et de la lumière
-           //.add_systems(Startup, add_people) // Ajouter les entités "personnes"
-           //.add_systems(Update, hello_world) // Système qui affiche un message au monde
-          // .add_systems(Update, update_people) // Met à jour les noms
-           //.add_systems(Update, greet_people); // Système qui salue les personnes
-    }
-}
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugins(HelloPlugin)
+        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest())) // prevents blurry sprites
+        .add_systems(Startup, setup)
+        .add_systems(Update, animate_sprite)
         .run();
 }
 
-
-fn hello_world() {
-    println!("Hello world !");
+#[derive(Component)]
+struct AnimationIndices {
+    first: usize,
+    last: usize,
 }
 
-fn greet_people(query: Query<&Name, With<Person>>) {
-    for name in &query {
-        println!("Hello {}!", name.0);
-    }
-}
+#[derive(Component, Deref, DerefMut)]
+struct AnimationTimer(Timer);
 
-// Ajout des entités "personnes"
-fn add_people(mut commands: Commands) {
-    commands.spawn((Person, Name("Elaina Proctor".to_string())));
-    commands.spawn((Person, Name("Renzo Hume".to_string())));
-    commands.spawn((Person, Name("Zayna Nieves".to_string())));
-}
-
-// Mise à jour des noms des personnes
-fn update_people(mut query: Query<&mut Name, With<Person>>) {
-    for mut name in &mut query {
-        if name.0 == "Elaina Proctor" {
-            name.0 = "Elaina Hume".to_string();
-            break;
+fn animate_sprite(
+    time: Res<Time>,
+    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut TextureAtlas)>,
+) {
+    for (indices, mut timer, mut atlas) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            atlas.index = if atlas.index == indices.last {
+                indices.first
+            } else {
+                atlas.index + 1
+            };
         }
     }
 }
 
-fn setup(mut commands: Commands) {
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    let texture = asset_server.load("player/player.png");
+    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 6, 10, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(layout);
+    let animation_indices = AnimationIndices { first: 36, last: 39 };
     commands.spawn(Camera2dBundle::default());
-
-    commands.spawn(PointLight2dBundle {
-        point_light: PointLight2d {
-            radius: 100.0,
-            intensity: 3.0,
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform::from_scale(Vec3::splat(6.0)),
+            texture,
             ..default()
         },
-        ..default()
-    });
+        TextureAtlas {
+            layout: texture_atlas_layout,
+            index: animation_indices.first,
+        },
+        animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+    ));
 }
