@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_light_2d::prelude::*;
 
 
 #[derive(Component)]
@@ -39,4 +40,17 @@ fn update_people(mut query: Query<&mut Name, With<Person>>) {
             break;
         }
     }
+}
+
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2dBundle::default());
+
+    commands.spawn(PointLight2dBundle {
+        point_light: PointLight2d {
+            radius: 100.0,
+            intensity: 3.0,
+            ..default()
+        },
+        ..default()
+    });
 }
